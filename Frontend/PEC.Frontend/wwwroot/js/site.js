@@ -20,9 +20,10 @@ connection.on("AddNewVehicle", function (vehicle) {
     replacedCard = replacedCard.replace("$CAR_NAME", vehicle.name);
     replacedCard = replacedCard.replace("$CAR_BRAND", vehicle.brand);
 
-    if (vehicle.Base64Images !== undefined) {
-        console.log(vehicle.Base64Images[0]);
-        replacedCard = replacedCard.replace("$CAR_IMAGE", vehicle.base64Images[0].base64);
+    console.log(vehicle.carImages);
+    if (vehicle.carImages.length > 0) {
+        console.log(vehicle.carImages[0]);
+        replacedCard = replacedCard.replace("$CAR_IMAGE", vehicle.carImages[0].base64);
     } else {
         replacedCard = replacedCard.replace("$CAR_IMAGE", "/car-placeholder-image.jpg");
     }
