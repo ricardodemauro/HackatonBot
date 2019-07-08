@@ -21,4 +21,11 @@
     <Folder Include="Migrations\" />
   </ItemGroup>
 
+
+  <ItemGroup>
+    <None Update="DataBase\PEC.db">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
