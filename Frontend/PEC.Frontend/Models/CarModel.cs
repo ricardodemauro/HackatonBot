@@ -13,19 +13,22 @@ namespace PEC.Frontend.Models
         [Required] public string Brand { get; set; }
         [Required] public string Color { get; set; }
         public string Plate { get; set; }
-        public string Base64Image { get; set; }
+        public IList<string> Base64Images { get; set; }
 
         public CarModel()
         {
+            Base64Images = new List<string>();
         }
 
-        public CarModel(Car entity)
+        public CarModel(Car entity) : this()
         {
             Name = entity.Name;
             Brand = entity.Brand;
             Color = entity.Color;
             Plate = entity.Plate;
-            Base64Image = entity.Base64Image;
+            
+            foreach(var carImage in entity.CarImages)
+                Base64Images.Add(carImage.Base64);
         }
     }
 }

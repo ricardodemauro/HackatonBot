@@ -14,7 +14,8 @@ namespace PEC.Frontend.DataBase.Configurations
         public void Configure(EntityTypeBuilder<Car> builder)
         {
             builder.ToTable(nameof(PECContext.Cars)).HasKey(x => x.Id);
-            builder.Property(x => x.Base64Image).HasColumnType("BLOB");
+            builder.HasMany(x => x.CarImages).WithOne().HasForeignKey(x => x.CarId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

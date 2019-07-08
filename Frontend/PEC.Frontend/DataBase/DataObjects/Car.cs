@@ -1,4 +1,5 @@
-﻿using PEC.Frontend.Models;
+﻿using System.Collections.Generic;
+using PEC.Frontend.Models;
 
 namespace PEC.Frontend.DataBase.DataObjects
 {
@@ -8,10 +9,11 @@ namespace PEC.Frontend.DataBase.DataObjects
         public string Brand { get; set; }
         public string Color { get; set; }
         public string Plate { get; set; }
-        public string Base64Image { get; set; }
+        public IList<CarImage> CarImages { get; set; }
 
         public Car() : base()
         {
+            CarImages = new List<CarImage>();
         }
 
         public Car(CarModel model) : this()
@@ -20,7 +22,9 @@ namespace PEC.Frontend.DataBase.DataObjects
             Brand = model.Brand;
             Color = model.Color;
             Plate = model.Plate;
-            Base64Image = model.Base64Image;
+
+            foreach (var imageBase64 in model.Base64Images)
+                CarImages.Add(new CarImage(imageBase64));
         }
     }
 }

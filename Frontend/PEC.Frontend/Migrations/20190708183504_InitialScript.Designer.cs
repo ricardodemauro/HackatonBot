@@ -9,8 +9,8 @@ using PEC.Frontend.DataBase;
 namespace PEC.Frontend.Migrations
 {
     [DbContext(typeof(PECContext))]
-    [Migration("20190705173327_BlobImage")]
-    partial class BlobImage
+    [Migration("20190708183504_InitialScript")]
+    partial class InitialScript
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -22,9 +22,6 @@ namespace PEC.Frontend.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd();
-
-                    b.Property<string>("Base64Image")
-                        .HasColumnType("BLOB");
 
                     b.Property<string>("Brand");
 
@@ -39,6 +36,33 @@ namespace PEC.Frontend.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Cars");
+                });
+
+            modelBuilder.Entity("PEC.Frontend.DataBase.DataObjects.CarImage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd();
+
+                    b.Property<string>("Base64")
+                        .HasColumnType("BLOB");
+
+                    b.Property<int>("CarId");
+
+                    b.Property<DateTime>("CreationDate");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CarId");
+
+                    b.ToTable("CarImages");
+                });
+
+            modelBuilder.Entity("PEC.Frontend.DataBase.DataObjects.CarImage", b =>
+                {
+                    b.HasOne("PEC.Frontend.DataBase.DataObjects.Car")
+                        .WithMany("CarImages")
+                        .HasForeignKey("CarId")
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 #pragma warning restore 612, 618
         }
