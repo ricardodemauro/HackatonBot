@@ -38,8 +38,8 @@
         const styleOptions = {
             bubbleBackground: 'rgba(0, 0, 255, .1)',
             bubbleFromUserBackground: 'rgba(0, 255, 0, .1)',
-            rootHeight: '100%',
-            rootWidth: '420px',
+            rootHeight: '380px',
+            rootWidth: window.innerWidth > 420 ? '420px' : `${window.innerWidth - 50}px`,
             botAvatarImage: '/imgs/rosie.jpg'
         };
         window.WebChat.renderWebChat(
