@@ -66,10 +66,35 @@ namespace Microsoft.BotBuilderSamples
     }
 
 
+    public class BotSettings
+    {
+        public string Name { get; set; }
+        public string WelcomeMessage { get; set; }
+        public string InternWarning { get; set; }
+        public string WhatToDo { get; set; }
+        public string AddCar { get; set; }
+        public List<string> AddCarSynonyms { get; set; }
+        public string SeeInventory { get; set; }
+        public List<string> SeeInventorySynonyms { get; set; }
+        public string Exit { get; set; }
+        public List<string> ExitSynonyms { get; set; }
+        public string AskForImages { get; set; }
+        public string CarsReceived { get; set; }
+        public string Processing { get; set; }
+        public string ProcessingFinished { get; set; }
+        public string Complain { get; set; }
+        public string CheckAnswer { get; set; }
+        public string CorrectAnwer { get; set; }
+    }
+
+
+
     public class UserProfileDialog : ComponentDialog
     {
+
+        private static BotSettings _settings;
         private readonly IStatePropertyAccessor<UserProfile> _userProfileAccessor;
-        private IConfiguration _config;
+        private readonly IConfiguration _config;
         public UserProfileDialog(UserState userState, IConfiguration config)
             : base(nameof(UserProfileDialog))
         {
@@ -97,6 +122,7 @@ namespace Microsoft.BotBuilderSamples
 
             // The initial child Dialog to run.
             InitialDialogId = nameof(WaterfallDialog);
+            _settings = JsonConvert.DeserializeObject<BotSettings>(_config["botSettings"]);
         }
 
 
@@ -106,22 +132,22 @@ namespace Microsoft.BotBuilderSamples
             await stepContext.SendTypingAsync(1500, cancellationToken);
             var cardOptions = new List<Choice>()
             {
-                new Choice() { Value = "Add a new car", Synonyms = new List<string>() { "add", "new", "create", "save" } },
-                new Choice() { Value = "See inventory", Synonyms = new List<string>() { "list", "inventory", "cars" } },
-                new Choice() { Value = "Exit", Synonyms = new List<string>() { "exit", "leave", "quit", "stop" } },
+                new Choice() { Value = _settings.AddCar, Synonyms = _settings.AddCarSynonyms },
+                new Choice() { Value = _settings.SeeInventory, Synonyms = _settings.SeeInventorySynonyms },
+                new Choice() { Value = _settings.Exit, Synonyms = _settings.ExitSynonyms },
             };
 
             // WaterfallStep always finishes with the end of the Waterfall or with another dialog; here it is a Prompt Dialog.
             // Running a prompt here means the next WaterfallStep will be run when the users response is received.
             //https://unicode.org/emoji/charts/full-emoji-list.html#1f596
 
-            await stepContext.SendTypingAsync("Hello my name is Jhon. The newest Cox Automotive team member! \U0001F609", 1000, cancellationToken);
-            await stepContext.SendTypingAsync("I'm still an intern, please be patient \U0001F607.", 1000, cancellationToken);
+            await stepContext.SendTypingAsync(_settings.WelcomeMessage, 1000, cancellationToken);
+            await stepContext.SendTypingAsync(_settings.InternWarning, 1000, cancellationToken);
 
             return await stepContext.PromptAsync(nameof(ChoicePrompt),
                 new PromptOptions
                 {
-                    Prompt = MessageFactory.Text("what would you like to do today?"),
+                    Prompt = MessageFactory.Text(_settings.WhatToDo),
                     Choices = cardOptions,
                 }, cancellationToken);
         }
@@ -136,7 +162,7 @@ namespace Microsoft.BotBuilderSamples
                     return await stepContext.PromptAsync(nameof(AttachmentPrompt),
                         new PromptOptions
                         {
-                            Prompt = MessageFactory.Text("All right. Could ya pls share an image of the car you wanna add?")
+                            Prompt = MessageFactory.Text(_settings.AskForImages)
                         }
                         , cancellationToken);
                 case "See inventory":
@@ -156,7 +182,7 @@ namespace Microsoft.BotBuilderSamples
         private async Task<DialogTurnResult> GetCarImageAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             //stepContext.Values["name"] = (string)stepContext.Result;
-            await stepContext.SendTypingAsync("Nice car! Hold on...\U0001F3C3", 1000, cancellationToken);
+            await stepContext.SendTypingAsync(_settings.CarsReceived, 1000, cancellationToken);
 
             var image = (List<Attachment>)stepContext.Result;
             string json = await MakePredictionRequest(image[0].ContentUrl, stepContext, cancellationToken);
@@ -188,7 +214,7 @@ namespace Microsoft.BotBuilderSamples
 
             return await stepContext.PromptAsync(nameof(ConfirmPrompt), new PromptOptions
             {
-                Prompt = MessageFactory.Text($"\U0001F575 Well well wel. Look what we've got here. A {vehicle.tagName} \U0001F440, right?")
+                Prompt = MessageFactory.Text(_settings.CheckAnswer)
             }, cancellationToken);
         }
 
@@ -209,11 +235,11 @@ namespace Microsoft.BotBuilderSamples
             else
             {
                 await stepContext.SendTypingAsync(MessageFactory.ContentUrl("https://media.giphy.com/media/ckeHl52mNtoq87veET/giphy.gif", "image/gif"), 500, cancellationToken);
-                await stepContext.SendTypingAsync("I knew it!", 1000, cancellationToken);
-                await stepContext.SendTypingAsync("I knew it!", 1000, cancellationToken);
+                await stepContext.SendTypingAsync(_settings.CorrectAnwer, 1000, cancellationToken);
+                await stepContext.SendTypingAsync(_settings.CorrectAnwer, 1000, cancellationToken);
 
                 // User said "no" so we will skip the next step. Give -1 as the age.
-                return await stepContext.NextAsync(-1, cancellationToken);
+                return await stepContext.NextAsync(string.Empty, cancellationToken);
             }
         }
 
@@ -290,7 +316,7 @@ namespace Microsoft.BotBuilderSamples
 
             client.DefaultRequestHeaders.Add("Prediction-Key", _config["predictionKey"]);
 
-            await stepContext.SendTypingAsync("Just one more sec...", 1000, cancellationToken: cancellationToken);
+            await stepContext.SendTypingAsync(_settings.Processing, 1000, cancellationToken: cancellationToken);
             string jsonResult = string.Empty;
             using (var content = new ByteArrayContent(imageBytes))
             {
@@ -301,8 +327,8 @@ namespace Microsoft.BotBuilderSamples
                 jsonResult = await response.Content.ReadAsStringAsync();
             }
 
-            await stepContext.SendTypingAsync("Done. Too many details on my registration form here.", 1000, cancellationToken: cancellationToken);
-            await stepContext.SendTypingAsync("Would be nice to have some kind of \U0001F916 to do all this paper work, don't you think?", 1000, cancellationToken: cancellationToken);
+            await stepContext.SendTypingAsync(_settings.ProcessingFinished, 1000, cancellationToken: cancellationToken);
+            await stepContext.SendTypingAsync(_settings.Complain, 1000, cancellationToken: cancellationToken);
             return jsonResult;
         }
 
