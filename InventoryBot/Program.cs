@@ -21,6 +21,7 @@ namespace Microsoft.BotBuilderSamples
                     logging.AddDebug();
                     logging.AddConsole();
                 })
+                .UseApplicationInsights()
                 .UseStartup<Startup>();
     }
 }
