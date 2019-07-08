@@ -11,6 +11,10 @@ namespace BertaBot.Models
         public decimal probability { get; set; }
         public string tagId { get; set; }
         public string tagName { get; set; }
+
+        public string brand { get; set; }
+
+        public string model { get; set; }
         public bool isModel { get; set; }
 
         public override string ToString()

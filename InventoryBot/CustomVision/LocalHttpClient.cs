@@ -55,7 +55,7 @@ namespace BertaBot.CustomVision
                         }
                         else
                         {
-                            rq.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(attachment.ContentType));
+                            //rq.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(attachment.ContentType));
                         }
 
                         using (var response = await _client.SendAsync(rq))
