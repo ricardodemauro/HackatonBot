@@ -144,7 +144,7 @@ namespace BertaBot.Bots
 
             _logger.LogInformation(LoggingEvents.GetCarImageAsync, $"{images.Count} images received");
 
-            var predictions = await MakePredictionRequest(images.Select(x => x.ContentUrl).ToList(), stepContext, cancellationToken);
+            var predictions = await MakePredictionRequest(images.ToList(), stepContext, cancellationToken);
 
             _logger.LogInformation($"ordering predictions");
             predictions = predictions.OrderByDescending(x => x.probability).ToList();
@@ -251,21 +251,23 @@ namespace BertaBot.Bots
             return Task.FromResult(promptContext.Recognized.Succeeded && promptContext.Recognized.Value > 0 && promptContext.Recognized.Value < 150);
         }
 
-        public async Task<List<Prediction>> MakePredictionRequest(List<string> imageUris, WaterfallStepContext stepContext, CancellationToken cancellationToken)
+        public async Task<List<Prediction>> MakePredictionRequest(List<Attachment> attchaments, WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            _logger.LogInformation(LoggingEvents.MakePredictionRequest, "Starting make predictions with {uris}", imageUris);
+            _logger.LogInformation(LoggingEvents.MakePredictionRequest, "Starting make predictions");
 
             var predictions = new List<Prediction>();
-            for (int i = 0; i < imageUris.Count; i++)
+            bool isSkype = string.Compare("skype", stepContext.Context.Activity.ChannelId, true) == 0;
+
+            for (int i = 0; i < attchaments.Count; i++)
             {
-                if (imageUris[i].Contains("localhost"))
+                if (isSkype)
                 {
-                    var predictionsLocal = await MakePredictionsHttp(imageUris[i], i, stepContext, cancellationToken);
+                    var predictionsLocal = await MakePredictionsWithFile(attchaments[i], i, stepContext, isSkype, cancellationToken);
                     predictions.AddRange(predictionsLocal.OrderByDescending(x => x.probability).Take(4));
                 }
                 else
                 {
-                    var predictionsHttp = await MakePredictionsHttpV2(imageUris[i], i, stepContext, cancellationToken);
+                    var predictionsHttp = await MakePredictionsHttpV2(attchaments[i].ContentUrl, i, stepContext, cancellationToken);
                     predictions.AddRange(predictionsHttp.OrderByDescending(x => x.probability).Take(4));
                 }
             }
@@ -276,12 +278,12 @@ namespace BertaBot.Bots
             return predictions;
         }
 
-        async Task<List<Prediction>> MakePredictionsHttp(string imageUri, int index, WaterfallStepContext stepContext, CancellationToken cancellationToken = default)
+        async Task<List<Prediction>> MakePredictionsWithFile(Attachment attachment, int index, WaterfallStepContext stepContext, bool isSkype = false, CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("Sending Prediction using localhost for image {IMAGE_URI}", imageUri);
+            _logger.LogInformation("Sending Prediction using localhost for image {IMAGE_URI}", attachment.ContentUrl);
             try
             {
-                var image = await _localService.GetImageAsync(imageUri);
+                var image = await _localService.GetImageAsync(attachment, stepContext.Context.Activity, isSkype);
 
                 var result = await _cogServices.MakePredictionAsync(image);
 
@@ -291,7 +293,7 @@ namespace BertaBot.Bots
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "error when sending through localhost {IMAGE_URI}", imageUri);
+                _logger.LogError(e, "error when sending through localhost {IMAGE_URI}", attachment.ContentUrl);
                 throw;
             }
 
