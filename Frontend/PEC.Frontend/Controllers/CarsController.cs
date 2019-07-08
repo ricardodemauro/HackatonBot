@@ -55,6 +55,8 @@ namespace PEC.Frontend.Controllers
             _context.Cars.Remove(vehicleDelete);
             await _context.SaveChangesAsync(cancellationToken);
 
+            _carHubContext.Clients.All.SendAsync("RemoveVehicle", id);
+
             return Ok();
         }
     }
