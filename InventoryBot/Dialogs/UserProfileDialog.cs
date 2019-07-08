@@ -1,124 +1,57 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Threading;
-using System.Threading.Tasks;
+using BertaBot.CustomVision;
+using BertaBot.Infrastructure;
+using BertaBot.Models;
 using Microsoft.Bot.Builder;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Choices;
 using Microsoft.Bot.Schema;
+using Microsoft.BotBuilderSamples;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace Microsoft.BotBuilderSamples
+namespace BertaBot.Bots
 {
-    public static class Extensions
-    {
-        public static async Task SendTypingAsync(this WaterfallStepContext stepContext, int time, CancellationToken cancellationToken)
-        {
-            var typing = new Activity(ActivityTypes.Typing);
-            await stepContext.Context.SendActivityAsync(typing, cancellationToken: cancellationToken);
-            Thread.Sleep(time);
-        }
-
-        public static async Task SendTypingAsync(this WaterfallStepContext stepContext, IMessageActivity activity, int time, CancellationToken cancellationToken)
-        {
-            var typing = new Activity(ActivityTypes.Typing);
-            await stepContext.Context.SendActivityAsync(typing, cancellationToken: cancellationToken);
-            Thread.Sleep(time);
-
-            await stepContext.Context.SendActivityAsync(activity, cancellationToken: cancellationToken);
-        }
-
-        public static async Task SendTypingAsync(this WaterfallStepContext stepContext, string message, int time, CancellationToken cancellationToken)
-        {
-            var typing = new Activity(ActivityTypes.Typing);
-            await stepContext.Context.SendActivityAsync(typing, cancellationToken: cancellationToken);
-            Thread.Sleep(time);
-
-            await stepContext.Context.SendActivityAsync(message, cancellationToken: cancellationToken);
-        }
-
-        public static async Task<DialogTurnResult> PromptTypingAsync(this WaterfallStepContext stepContext, string dialogId, PromptOptions options, int time, CancellationToken cancellationToken = default)
-        {
-            var typing = new Activity(ActivityTypes.Typing);
-            await stepContext.Context.SendActivityAsync(typing, cancellationToken: cancellationToken);
-            Thread.Sleep(time);
-            return await stepContext.PromptAsync(dialogId, options, cancellationToken);
-        }
-    }
-
-
-
-    public class PredictionRoot
-    {
-        public string id { get; set; }
-        public string project { get; set; }
-        public string iteration { get; set; }
-        public DateTime created { get; set; }
-        public List<Prediction> predictions { get; set; }
-    }
-
-    public class Prediction
-    {
-        public decimal probability { get; set; }
-        public string tagId { get; set; }
-        public string tagName { get; set; }
-        public bool isModel { get; set; }
-
-        public override string ToString()
-        {
-            return tagName;
-        }
-    }
-
-
-    public class BotSettings
-    {
-        public string Name { get; set; }
-        public string WelcomeMessage { get; set; }
-        public string InternWarning { get; set; }
-        public string WhatToDo { get; set; }
-        public string AddCar { get; set; }
-        public List<string> AddCarSynonyms { get; set; }
-        public string SeeInventory { get; set; }
-        public List<string> SeeInventorySynonyms { get; set; }
-        public string Exit { get; set; }
-        public List<string> ExitSynonyms { get; set; }
-        public string AskForImages { get; set; }
-        public string CarsReceived { get; set; }
-        public string Processing { get; set; }
-        public string ProcessingFinished { get; set; }
-        public string Complain { get; set; }
-        public string CheckAnswer { get; set; }
-        public string CorrectAnwer { get; set; }
-        public string WrongAnswer { get; set; }
-    }
-
-
-
     public class UserProfileDialog : ComponentDialog
     {
-
         private static BotSettings _settings;
         private readonly IStatePropertyAccessor<UserProfile> _userProfileAccessor;
         private readonly IConfiguration _config;
 
-        private static ILogger _logger;
+        private readonly CogServicesHttp _cogServices;
+        private readonly LocalHttpClient _localService;
 
-        public UserProfileDialog(UserState userState, IConfiguration config, ILogger<UserProfileDialog> logger)
+        private static ILogger<UserProfileDialog> _logger;
+
+        public UserProfileDialog(UserState userState,
+            IConfiguration config,
+            ILogger<UserProfileDialog> logger,
+            CogServicesHttp cogServicesHttp,
+            LocalHttpClient localService)
             : base(nameof(UserProfileDialog))
         {
+            _logger = logger;
+            _cogServices = cogServicesHttp;
+            _localService = localService;
+
             _config = config;
             _userProfileAccessor = userState.CreateProperty<UserProfile>("UserProfile");
 
+            PreparePipeline();
+            _settings = JsonConvert.DeserializeObject<BotSettings>(_config["botSettings"]);
+        }
+
+        void PreparePipeline()
+        {
             // This array defines how the Waterfall will execute.
             var waterfallSteps = new WaterfallStep[]
             {
@@ -140,8 +73,6 @@ namespace Microsoft.BotBuilderSamples
 
             // The initial child Dialog to run.
             InitialDialogId = nameof(WaterfallDialog);
-            _settings = JsonConvert.DeserializeObject<BotSettings>(_config["botSettings"]);
-            _logger = logger;
         }
 
         private static async Task<DialogTurnResult> ActionStep(WaterfallStepContext stepContext, CancellationToken cancellationToken)
@@ -154,14 +85,10 @@ namespace Microsoft.BotBuilderSamples
                 new Choice() { Value = _settings.Exit, Synonyms = _settings.ExitSynonyms },
             };
 
-            // WaterfallStep always finishes with the end of the Waterfall or with another dialog; here it is a Prompt Dialog.
-            // Running a prompt here means the next WaterfallStep will be run when the users response is received.
-            //https://unicode.org/emoji/charts/full-emoji-list.html#1f596
-
             await stepContext.SendTypingAsync(_settings.WelcomeMessage, 1000, cancellationToken);
             await stepContext.SendTypingAsync(_settings.InternWarning, 1000, cancellationToken);
 
-            _logger.LogInformation("Display options");
+            _logger.LogInformation(LoggingEvents.ActionStep, "Display options");
 
             return await stepContext.PromptTypingAsync(nameof(ChoicePrompt),
                 new PromptOptions
@@ -175,12 +102,12 @@ namespace Microsoft.BotBuilderSamples
         {
             string value = ((FoundChoice)stepContext.Result).Value;
 
-            _logger.LogInformation($"selected option = {value}");
+            _logger.LogInformation(LoggingEvents.ActionOptionSelected, "selected option = {value}", value);
 
             switch (value)
             {
                 case "Add a new car":
-                    _logger.LogInformation("ask for images");
+                    _logger.LogInformation(LoggingEvents.ActionOptionSelected, "ask for images");
                     return await stepContext.PromptAsync(nameof(AttachmentPrompt),
                         new PromptOptions
                         {
@@ -188,22 +115,22 @@ namespace Microsoft.BotBuilderSamples
                         }
                         , cancellationToken);
                 case "See inventory":
-                    var attachments = new List<Attachment>();                
+                    var attachments = new List<Attachment>();
 
                     attachments.Add(GetHeroCard("BMW x1 foto", "https://imgd.aeplcdn.com/1056x594/cw/ec/20227/BMW-X1-New-Right-Front-Three-Quarter-57824.jpg").ToAttachment());
                     attachments.Add(GetHeroCard("BMW x1 branca", "https://imgd.aeplcdn.com/1056x594/cw/ec/20227/BMW-X1-Front-view-65924.jpg").ToAttachment());
                     attachments.Add(GetHeroCard("BMW x1 azul", "https://imgd.aeplcdn.com/1056x594/cw/ec/20227/BMW-X1-Right-Front-Three-Quarter-65929.jpg").ToAttachment());
 
-                    _logger.LogInformation("display available cars");
+                    _logger.LogInformation(LoggingEvents.ActionOptionSelected, "display available cars");
 
                     await stepContext.SendTypingAsync(MessageFactory.Carousel(attachments), 1000, cancellationToken: cancellationToken);
                     return await stepContext.EndDialogAsync(new List<string>(), cancellationToken);
                 case "Exit":
-                    _logger.LogInformation("exiting");
+                    _logger.LogInformation(LoggingEvents.ActionOptionSelected, "exiting");
                     await stepContext.Context.SendActivityAsync("ok then, bye!", cancellationToken: cancellationToken);
                     return await stepContext.EndDialogAsync(new List<string>(), cancellationToken);
                 default:
-                    _logger.LogInformation("invalid option");
+                    _logger.LogInformation(LoggingEvents.ActionOptionSelected, "invalid option");
                     await stepContext.Context.SendActivityAsync("nao entendi, vai ter que comecar tudo de novo! ainda estamos melhorando isso", cancellationToken: cancellationToken);
                     return await stepContext.EndDialogAsync(new List<string>(), cancellationToken);
             }
@@ -211,13 +138,13 @@ namespace Microsoft.BotBuilderSamples
 
         private async Task<DialogTurnResult> GetCarImageAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            //stepContext.Values["name"] = (string)stepContext.Result;
             await stepContext.SendTypingAsync(_settings.CarsReceived, 1000, cancellationToken);
 
             var images = (List<Attachment>)stepContext.Result;
 
-            _logger.LogInformation($"{images.Count} images received");
-            List<Prediction> predictions = await MakePredictionRequest(images.Select(x => x.ContentUrl).ToList(), stepContext, cancellationToken);
+            _logger.LogInformation(LoggingEvents.GetCarImageAsync, $"{images.Count} images received");
+
+            var predictions = await MakePredictionRequest(images.Select(x => x.ContentUrl).ToList(), stepContext, cancellationToken);
 
             _logger.LogInformation($"ordering predictions");
             predictions = predictions.OrderByDescending(x => x.probability).ToList();
@@ -231,19 +158,7 @@ namespace Microsoft.BotBuilderSamples
 
             await stepContext.SendTypingAsync(100, cancellationToken);
 
-            //List<string> su = new List<string>();
-            //asd.predictions.ForEach(x =>
-            //{
-            //    su.Add($"{x.tagName} - {x.probability}, ");
-            //});
-
-            //await stepContext.Context.SendActivityAsync(MessageFactory.SuggestedActions(su), cancellationToken);
-            // We can send messages to the user at any point in the WaterfallStep.
-            //await stepContext.Context.SendActivityAsync(MessageFactory.Text($"Thanks {stepContext.Result}."), cancellationToken);
-
-            // WaterfallStep always finishes with the end of the Waterfall or with another dialog; here it is a Prompt Dialog.
-
-            _logger.LogInformation($"ask user to confirm the vehicle name prediction");
+            _logger.LogInformation(LoggingEvents.GetCarImageAsync, $"ask user to confirm the vehicle name prediction");
             return await stepContext.PromptAsync(nameof(ConfirmPrompt), new PromptOptions
             {
                 Prompt = MessageFactory.Text(_settings.CheckAnswer.Replace("#VEHICLE", vehicle.tagName))
@@ -262,12 +177,12 @@ namespace Microsoft.BotBuilderSamples
                     //RetryPrompt = MessageFactory.Text("The value entered must be greater than 0 and less than 150."),
                 };
 
-                _logger.LogInformation($"wrong prediction, ask for input");
+                _logger.LogInformation(LoggingEvents.CheckCarPredictionAsync, $"wrong prediction, ask for input");
                 return await stepContext.PromptTypingAsync(nameof(TextPrompt), promptOptions, 1000, cancellationToken);
             }
             else
             {
-                _logger.LogInformation($"correct prediction");
+                _logger.LogInformation(LoggingEvents.CheckCarPredictionAsync, $"correct prediction");
                 await stepContext.SendTypingAsync(MessageFactory.ContentUrl("https://media.giphy.com/media/ckeHl52mNtoq87veET/giphy.gif", "image/gif"), 500, cancellationToken);
                 await stepContext.SendTypingAsync(_settings.CorrectAnwer, 1000, cancellationToken);
                 await stepContext.SendTypingAsync(_settings.CorrectAnwer, 1000, cancellationToken);
@@ -298,13 +213,7 @@ namespace Microsoft.BotBuilderSamples
             _logger.LogInformation($"end of game");
             await stepContext.SendTypingAsync(MessageFactory.ContentUrl("https://pbs.twimg.com/profile_images/649600410525679616/QjoMCmpB_400x400.png", "image/png"), 1200, cancellationToken);
             await stepContext.SendTypingAsync(MessageFactory.Text("Thanks for using Cox Autoinc"), 1000, cancellationToken);
-            //var msg = (int)stepContext.Values["age"] == -1 ? "No age given." : $"I have your age as {stepContext.Values["age"]}.";
 
-            //// We can send messages to the user at any point in the WaterfallStep.
-            //await stepContext.Context.SendActivityAsync(MessageFactory.Text(msg), cancellationToken);
-
-            //// WaterfallStep always finishes with the end of the Waterfall or with another dialog, here it is a Prompt Dialog.
-            //return await stepContext.PromptAsync(nameof(ConfirmPrompt), new PromptOptions { Prompt = MessageFactory.Text("Is this ok?") }, cancellationToken);
             return await stepContext.EndDialogAsync(cancellationToken: cancellationToken);
         }
 
@@ -342,47 +251,22 @@ namespace Microsoft.BotBuilderSamples
             return Task.FromResult(promptContext.Recognized.Succeeded && promptContext.Recognized.Value > 0 && promptContext.Recognized.Value < 150);
         }
 
-        static byte[] StreamToByteArray(Stream stream)
-        {
-            byte[] buffer = new byte[16 * 1024];
-            using (MemoryStream ms = new MemoryStream())
-            {
-                int read;
-                while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
-                {
-                    ms.Write(buffer, 0, read);
-                }
-                return ms.ToArray();
-            }
-        }
-
         public async Task<List<Prediction>> MakePredictionRequest(List<string> imageUris, WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            List<Prediction> predictions = new List<Prediction>();
+            _logger.LogInformation(LoggingEvents.MakePredictionRequest, "Starting make predictions with {uris}", imageUris);
 
-            foreach (var imageUri in imageUris)
+            var predictions = new List<Prediction>();
+            for (int i = 0; i < imageUris.Count; i++)
             {
-                var client = new HttpClient();
-
-                byte[] imageBytes;
-                using (var stream = await client.GetStreamAsync(imageUri))
+                if (imageUris[i].Contains("localhost"))
                 {
-                    imageBytes = StreamToByteArray(stream);
+                    var predictionsLocal = await MakePredictionsHttp(imageUris[i], i, stepContext, cancellationToken);
+                    predictions.AddRange(predictionsLocal.OrderByDescending(x => x.probability).Take(4));
                 }
-
-                client.DefaultRequestHeaders.Add("Prediction-Key", _config["predictionKey"]);
-
-                await stepContext.SendTypingAsync(_settings.Processing.Replace("#NUMBER", (imageUris.IndexOf(imageUri) + 1).ToString()), 1500, cancellationToken: cancellationToken);
-                string jsonResult = string.Empty;
-                using (var content = new ByteArrayContent(imageBytes))
+                else
                 {
-                    content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-
-                    string url = _config["predictionBaseUri"] + "/" + _config["predictionUrl"];
-                    var response = await client.PostAsync(url, content);
-                    _logger.LogInformation($"prediction response = {response.StatusCode}");
-                    PredictionRoot result = JsonConvert.DeserializeObject<PredictionRoot>(await response.Content.ReadAsStringAsync());
-                    predictions.AddRange(result.predictions.OrderByDescending(x => x.probability).Take(4));
+                    var predictionsHttp = await MakePredictionsHttpV2(imageUris[i], i, stepContext, cancellationToken);
+                    predictions.AddRange(predictionsHttp.OrderByDescending(x => x.probability).Take(4));
                 }
             }
 
@@ -390,6 +274,46 @@ namespace Microsoft.BotBuilderSamples
             await stepContext.SendTypingAsync(_settings.Complain, 1000, cancellationToken: cancellationToken);
 
             return predictions;
+        }
+
+        async Task<List<Prediction>> MakePredictionsHttp(string imageUri, int index, WaterfallStepContext stepContext, CancellationToken cancellationToken = default)
+        {
+            _logger.LogInformation("Sending Prediction using localhost for image {IMAGE_URI}", imageUri);
+            try
+            {
+                var image = await _localService.GetImageAsync(imageUri);
+
+                var result = await _cogServices.MakePredictionAsync(image);
+
+                await stepContext.SendTypingAsync(_settings.Processing.Replace("#NUMBER", (index).ToString()), 1500, cancellationToken: cancellationToken);
+
+                return result.predictions;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "error when sending through localhost {IMAGE_URI}", imageUri);
+                throw;
+            }
+
+        }
+
+        async Task<List<Prediction>> MakePredictionsHttpV2(string imageUri, int index, WaterfallStepContext stepContext, CancellationToken cancellationToken = default)
+        {
+            _logger.LogInformation("Sending Prediction using target href for image {IMAGE_URI}", imageUri);
+
+            try
+            {
+                var result = await _cogServices.MakePredictionUriAsync(imageUri);
+
+                await stepContext.SendTypingAsync(_settings.Processing.Replace("#NUMBER", (index).ToString()), 1500, cancellationToken: cancellationToken);
+
+                return result.predictions;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "error when sending through href target {IMAGE_URI}", imageUri);
+                throw;
+            }
         }
 
         private static byte[] GetImageAsByteArray(string imageFilePath)

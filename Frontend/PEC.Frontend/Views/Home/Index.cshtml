@@ -27,3 +27,33 @@
         </div>
     }
 </div>
+
+
+
+@section footer
+{
+    <div id="webchat"></div>
+    <script src="https://cdn.botframework.com/botframework-webchat/latest/webchat.js"></script>
+    <script>
+        const styleOptions = {
+            bubbleBackground: 'rgba(0, 0, 255, .1)',
+            bubbleFromUserBackground: 'rgba(0, 255, 0, .1)',
+            rootHeight: '100%',
+            rootWidth: '420px',
+            botAvatarImage: '/imgs/rosie.jpg'
+        };
+        window.WebChat.renderWebChat(
+            {
+                directLine: window.WebChat.createDirectLine({
+                    token: 'v4RyeBauQlM.DQNmiG50m_FX1YBI8EGQMKVPVIPHUbSGhWcpEFLYS3Q'
+                }),
+                // Passing 'styleOptions' when rendering Web Chat
+                styleOptions,
+                userID: 'Browser',
+                username: 'Web Chat User',
+                locale: 'en-US'
+            },
+            document.getElementById('webchat')
+        );
+    </script>
+}
