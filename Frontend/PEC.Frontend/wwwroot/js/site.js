@@ -22,7 +22,7 @@ connection.on("AddNewVehicle", function (vehicle) {
 
     if (vehicle.Base64Images !== undefined) {
         console.log(vehicle.Base64Images[0]);
-        replacedCard = replacedCard.replace("$CAR_IMAGE", vehicle.Base64Images[0].base64);
+        replacedCard = replacedCard.replace("$CAR_IMAGE", vehicle.base64Images[0].base64);
     } else {
         replacedCard = replacedCard.replace("$CAR_IMAGE", "/car-placeholder-image.jpg");
     }

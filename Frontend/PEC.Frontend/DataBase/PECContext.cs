@@ -15,7 +15,7 @@ namespace PEC.Frontend.DataBase
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseSqlite("Filename=./DataBase/PEC.db");
+            optionsBuilder.UseSqlServer("Data Source=tcp:hackadb.database.windows.net,1433;Initial Catalog=hackahack;User ID=radmin;Password=Brq.1234");
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

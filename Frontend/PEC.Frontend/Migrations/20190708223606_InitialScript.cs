@@ -1,4 +1,5 @@
 ﻿using System;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace PEC.Frontend.Migrations
@@ -12,7 +13,7 @@ namespace PEC.Frontend.Migrations
                 columns: table => new
                 {
                     Id = table.Column<int>(nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
+                        .Annotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn),
                     CreationDate = table.Column<DateTime>(nullable: false),
                     Name = table.Column<string>(nullable: true),
                     Brand = table.Column<string>(nullable: true),
@@ -29,9 +30,9 @@ namespace PEC.Frontend.Migrations
                 columns: table => new
                 {
                     Id = table.Column<int>(nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
+                        .Annotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn),
                     CreationDate = table.Column<DateTime>(nullable: false),
-                    Base64 = table.Column<string>(type: "BLOB", nullable: true),
+                    Base64 = table.Column<string>(nullable: true),
                     CarId = table.Column<int>(nullable: false)
                 },
                 constraints: table =>
