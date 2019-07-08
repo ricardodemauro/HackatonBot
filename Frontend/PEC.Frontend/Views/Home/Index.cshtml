@@ -9,49 +9,19 @@
     <p>Here you can see a complete list of available cars.</p>
 </div>
 
-<div class="row">
-    <div class="col-sm-3">
-        <div class="card" style="width: 18rem;">
-            <img class="card-img-top" src="https://t1-cms-1.images.toyota-europe.com/toyotaone/ieen/corolla_1980x1020_tcm-3044-1555806.jpg" alt="Card image cap">
-            <div class="card-body">
-                <h5 class="card-title">Corolla</h5>
-                <h6 class="card-subtitle text-muted">Toyota</h6>
-                <p class="card-text">Complete car with all the accessories available for the model.</p>
-                @*<a href="#" class="btn btn-primary">Go somewhere</a>*@
+<div id="mainList" class="row">
+    @foreach (var carModel in Model)
+    {
+        <div class="col-sm-3 mt-2 mr-3">
+            <div class="card" style="width: 18rem;">
+                <img class="card-img-top" src="@carModel.Base64Images.FirstOrDefault()" alt="Card image cap">
+                <div class="card-body">
+                    <h5 class="card-title">@carModel.Name</h5>
+                    <h6 class="card-subtitle text-muted">@carModel.Brand</h6>
+                    <p class="card-text">Complete car with all the accessories available for the model.</p>
+                    <a href="#" class="btn btn-primary">Let's drive!</a>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-sm-3">
-        <div class="card" style="width: 18rem;">
-            <img class="card-img-top" src="https://t1-cms-1.images.toyota-europe.com/toyotaone/ieen/corolla_1980x1020_tcm-3044-1555806.jpg" alt="Card image cap">
-            <div class="card-body">
-                <h5 class="card-title">Corolla</h5>
-                <h6 class="card-subtitle text-muted">Toyota</h6>
-                <p class="card-text">Complete car with all the accessories available for the model.</p>
-                @*<a href="#" class="btn btn-primary">Go somewhere</a>*@
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-3">
-        <div class="card" style="width: 18rem;">
-            <img class="card-img-top" src="https://t1-cms-1.images.toyota-europe.com/toyotaone/ieen/corolla_1980x1020_tcm-3044-1555806.jpg" alt="Card image cap">
-            <div class="card-body">
-                <h5 class="card-title">Corolla</h5>
-                <h6 class="card-subtitle text-muted">Toyota</h6>
-                <p class="card-text">Complete car with all the accessories available for the model.</p>
-                @*<a href="#" class="btn btn-primary">Go somewhere</a>*@
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-3">
-        <div class="card" style="width: 18rem;">
-            <img class="card-img-top" src="https://t1-cms-1.images.toyota-europe.com/toyotaone/ieen/corolla_1980x1020_tcm-3044-1555806.jpg" alt="Card image cap">
-            <div class="card-body">
-                <h5 class="card-title">Corolla</h5>
-                <h6 class="card-subtitle text-muted">Toyota</h6>
-                <p class="card-text">Complete car with all the accessories available for the model.</p>
-                @*<a href="#" class="btn btn-primary">Go somewhere</a>*@
-            </div>
-        </div>
-    </div>
+    }
 </div>
