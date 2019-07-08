@@ -9,6 +9,7 @@ namespace PEC.Frontend.Models
 {
     public class CarModel
     {
+        public int Id { get; set; }
         [Required] public string Name { get; set; }
         [Required] public string Brand { get; set; }
         [Required] public string Color { get; set; }
@@ -22,6 +23,7 @@ namespace PEC.Frontend.Models
 
         public CarModel(Car entity) : this()
         {
+            Id = entity.Id;
             Name = entity.Name;
             Brand = entity.Brand;
             Color = entity.Color;

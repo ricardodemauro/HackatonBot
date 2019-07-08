@@ -40,7 +40,7 @@ namespace PEC.Frontend.Controllers
         [HttpGet]
         public async Task<IEnumerable<Car>> ListAsync(CancellationToken cancellationToken)
         {
-            var vehicles = await _context.Cars.Take(6).ToListAsync(cancellationToken);
+            var vehicles = await _context.Cars.Include(x => x.CarImages).Take(6).ToListAsync(cancellationToken);
 
             return vehicles;
         }
