@@ -1,7 +1,7 @@
 ﻿"use strict";
 
 var connection = new signalR.HubConnectionBuilder().withUrl("/carHub").build();
-var cardHtml = "<div id=\"card_number$CAR_ID\" class=\"col-sm-2 col-md-3 col-lg-4 mt-2 mr-3\" style=\"display:none;\">" +
+var cardHtml = "<div id=\"card_number$CAR_ID\" class=\"col-md-4 mt-2 col-sm-6\" style=\"display:none;\">" +
     "<div class=\"card\" style = \"width: 18rem;\" >" +
     "<img class=\"card-img-top\" src=\"$CAR_IMAGE\" alt=\"Card image cap\">" +
     "<div class=\"card-body\">" +
