@@ -15,7 +15,7 @@
         {
             var mainImage = carModel.Base64Images.FirstOrDefault() ?? "/car-placeholder-image.jpg";
 
-            <div id="@($"card_number{carModel.Id}")" class="col-md-4 mt-2 col-sm-6">
+            <div id="@($" card_number{carModel.Id}")" class="col-md-4 mt-2 col-sm-6">
                 <div class="card" style="width: 18rem;">
                     <img class="card-img-top" src="@mainImage" alt="Card image cap" style="height: 190px">
                     <div class="card-body">
@@ -32,14 +32,17 @@
 
 
 @section footer
-{
-    <div id="webchat"></div>
-    <script src="https://cdn.botframework.com/botframework-webchat/latest/webchat.js"></script>
+    {
+
+    <div id="webchat">
+    </div>
+
+    <script src="//cdn.botframework.com/botframework-webchat/latest/webchat.js"></script>
     <script>
         const styleOptions = {
             bubbleBackground: 'rgba(0, 0, 255, .1)',
             bubbleFromUserBackground: 'rgba(0, 255, 0, .1)',
-            rootHeight: '380px',
+            rootHeight: '320px',
             rootWidth: window.innerWidth > 420 ? '420px' : `${window.innerWidth - 50}px`,
             botAvatarImage: '/imgs/rosie.jpg'
         };
