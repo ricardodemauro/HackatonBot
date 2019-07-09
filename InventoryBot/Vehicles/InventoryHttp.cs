@@ -70,7 +70,37 @@ namespace BertaBot.Vehicles
                     _logger.LogError(e, "something went wrong when sending to inventory");
                     throw;
                 }
+            }
+        }
 
+        public async Task<List<CarModel>> GetVehicles(CancellationToken cancellationToken)
+        {
+            using (var rq = new HttpRequestMessage(HttpMethod.Get, _inventoryUri))
+            {
+                //rq.Content = new StringContent(JsonConvert.SerializeObject(carModel));
+                //rq.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+                try
+                {
+                    var response = await _client.SendAsync(rq, cancellationToken);
+
+                    _logger.LogInformation($"get inventory response = {response.StatusCode}");
+
+                    if (response.StatusCode == HttpStatusCode.OK || response.StatusCode == HttpStatusCode.Created)
+                    {
+                        var jsonResult = await response.Content.ReadAsStringAsync();
+                        var cars = JsonConvert.DeserializeObject<List<CarModel>>(jsonResult);
+                        return cars;
+                    }
+                    _logger.LogError("Status code different from ok {StatusCode}", response.StatusCode);
+
+                    return new List<CarModel>();
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError(e, "something went wrong when getting inventory");
+                    throw;
+                }
             }
         }
     }
