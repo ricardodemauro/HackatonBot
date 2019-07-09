@@ -18,6 +18,8 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using BertaBot.Vehicles;
+using BertaBot.Vehicles.Models;
 
 namespace BertaBot.Bots
 {
@@ -29,6 +31,7 @@ namespace BertaBot.Bots
 
         private readonly CogServicesHttp _cogServices;
         private readonly LocalHttpClient _localService;
+        private readonly InventoryHttp _inventoryService;
 
         private static ILogger<UserProfileDialog> _logger;
 
@@ -36,12 +39,14 @@ namespace BertaBot.Bots
             IConfiguration config,
             ILogger<UserProfileDialog> logger,
             CogServicesHttp cogServicesHttp,
-            LocalHttpClient localService)
+            LocalHttpClient localService,
+            InventoryHttp inventoryService)
             : base(nameof(UserProfileDialog))
         {
             _logger = logger;
             _cogServices = cogServicesHttp;
             _localService = localService;
+            _inventoryService = inventoryService;
 
             _config = config;
             _userProfileAccessor = userState.CreateProperty<UserProfile>("UserProfile");
@@ -157,7 +162,8 @@ namespace BertaBot.Bots
             //var color = asd.predictions.FirstOrDefault(p => !p.isModel);
 
             await stepContext.SendTypingAsync(100, cancellationToken);
-
+            stepContext.Values["brand"] = vehicle.brand;
+            stepContext.Values["model"] = vehicle.model;
             _logger.LogInformation(LoggingEvents.GetCarImageAsync, $"ask user to confirm the vehicle name prediction");
             return await stepContext.PromptAsync(nameof(ConfirmPrompt), new PromptOptions
             {
@@ -184,8 +190,20 @@ namespace BertaBot.Bots
             {
                 _logger.LogInformation(LoggingEvents.CheckCarPredictionAsync, $"correct prediction");
                 await stepContext.SendTypingAsync(MessageFactory.ContentUrl("https://media.giphy.com/media/ckeHl52mNtoq87veET/giphy.gif", "image/gif"), 500, cancellationToken);
+
+                var carModel = new CarModel
+                {
+                    Brand = (string)stepContext.Values["brand"],
+                    Name = (string)stepContext.Values["model"],
+                };
+
+
+                var imageBytes = (List<(byte[], string)>)stepContext.Values["vehicleImages"];
+
+                await _inventoryService.AddVehicle(carModel, imageBytes, cancellationToken: cancellationToken);
                 await stepContext.SendTypingAsync(_settings.CorrectAnwer, 1000, cancellationToken);
-                await stepContext.SendTypingAsync(_settings.CorrectAnwer, 1000, cancellationToken);
+
+
 
                 // User said "no" so we will skip the next step. Give -1 as the age.
                 return await stepContext.NextAsync(string.Empty, cancellationToken);
@@ -208,6 +226,8 @@ namespace BertaBot.Bots
                 _logger.LogInformation($"wrong prediction, save it to JOAO api");
                 await stepContext.SendTypingAsync(MessageFactory.Text("Nice, saving it now."), 1000, cancellationToken);
                 //send to joao
+
+
             }
 
             _logger.LogInformation($"end of game");
@@ -258,27 +278,21 @@ namespace BertaBot.Bots
             var predictions = new List<Prediction>();
             bool isSkype = string.Compare("skype", stepContext.Context.Activity.ChannelId, true) == 0;
 
+            var imagesBytes = new List<(byte[], string)>();
             for (int i = 0; i < attchaments.Count; i++)
             {
-                if (isSkype)
-                {
-                    var predictionsLocal = await MakePredictionsWithFile(attchaments[i], i, stepContext, isSkype, cancellationToken);
-                    predictions.AddRange(predictionsLocal.OrderByDescending(x => x.probability).Take(4));
-                }
-                else
-                {
-                    var predictionsHttp = await MakePredictionsHttpV2(attchaments[i].ContentUrl, i, stepContext, cancellationToken);
-                    predictions.AddRange(predictionsHttp.OrderByDescending(x => x.probability).Take(4));
-                }
+                var (predictionsLocal, image) = await MakePredictionsWithFile(attchaments[i], i, stepContext, isSkype, cancellationToken);
+                predictions.AddRange(predictionsLocal.OrderByDescending(x => x.probability).Take(4));
+                imagesBytes.Add((image, attchaments[i].ContentType));
             }
 
             await stepContext.SendTypingAsync(_settings.ProcessingFinished, 1000, cancellationToken: cancellationToken);
             await stepContext.SendTypingAsync(_settings.Complain, 1000, cancellationToken: cancellationToken);
-
+            stepContext.Values["vehicleImages"] = imagesBytes;
             return predictions;
         }
 
-        async Task<List<Prediction>> MakePredictionsWithFile(Attachment attachment, int index, WaterfallStepContext stepContext, bool isSkype = false, CancellationToken cancellationToken = default)
+        async Task<(List<Prediction>, byte[])> MakePredictionsWithFile(Attachment attachment, int index, WaterfallStepContext stepContext, bool isSkype = false, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Sending Prediction using localhost for image {IMAGE_URI}", attachment.ContentUrl);
             try
@@ -289,7 +303,7 @@ namespace BertaBot.Bots
 
                 await stepContext.SendTypingAsync(_settings.Processing.Replace("#NUMBER", (index).ToString()), 1500, cancellationToken: cancellationToken);
 
-                return result.predictions;
+                return (result.predictions, image);
             }
             catch (Exception e)
             {
@@ -299,24 +313,24 @@ namespace BertaBot.Bots
 
         }
 
-        async Task<List<Prediction>> MakePredictionsHttpV2(string imageUri, int index, WaterfallStepContext stepContext, CancellationToken cancellationToken = default)
-        {
-            _logger.LogInformation("Sending Prediction using target href for image {IMAGE_URI}", imageUri);
+        //async Task<List<Prediction>> MakePredictionsHttpV2(string imageUri, int index, WaterfallStepContext stepContext, CancellationToken cancellationToken = default)
+        //{
+        //    _logger.LogInformation("Sending Prediction using target href for image {IMAGE_URI}", imageUri);
 
-            try
-            {
-                var result = await _cogServices.MakePredictionUriAsync(imageUri);
+        //    try
+        //    {
+        //        var result = await _cogServices.MakePredictionUriAsync(imageUri);
 
-                await stepContext.SendTypingAsync(_settings.Processing.Replace("#NUMBER", (index).ToString()), 1500, cancellationToken: cancellationToken);
+        //        await stepContext.SendTypingAsync(_settings.Processing.Replace("#NUMBER", (index).ToString()), 1500, cancellationToken: cancellationToken);
 
-                return result.predictions;
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, "error when sending through href target {IMAGE_URI}", imageUri);
-                throw;
-            }
-        }
+        //        return result.predictions;
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        _logger.LogError(e, "error when sending through href target {IMAGE_URI}", imageUri);
+        //        throw;
+        //    }
+        //}
 
         private static byte[] GetImageAsByteArray(string imageFilePath)
         {
@@ -386,8 +400,11 @@ namespace BertaBot.Bots
             {
                 if (data.ContainsKey(p.tagName))
                 {
-                    p.tagName = $"{data[p.tagName]} {p.tagName}";
+                    p.brand = data[p.tagName];
+                    p.model = p.tagName;
                     p.isModel = true;
+
+                    p.tagName = $"{data[p.tagName]} {p.tagName}";
                 }
             });
         }
