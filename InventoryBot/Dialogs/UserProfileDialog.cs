@@ -91,7 +91,6 @@ namespace BertaBot.Bots
             };
 
             await stepContext.SendTypingAsync(_settings.WelcomeMessage, 1000, cancellationToken);
-            await stepContext.SendTypingAsync(_settings.InternWarning, 1000, cancellationToken);
 
             _logger.LogInformation(LoggingEvents.ActionStep, "Display options");
 
@@ -120,6 +119,7 @@ namespace BertaBot.Bots
                         }
                         , cancellationToken);
                 case "See inventory":
+
                     var attachments = new List<Attachment>();
 
                     attachments.Add(GetHeroCard("BMW x1 foto", "https://imgd.aeplcdn.com/1056x594/cw/ec/20227/BMW-X1-New-Right-Front-Three-Quarter-57824.jpg").ToAttachment());
@@ -197,17 +197,20 @@ namespace BertaBot.Bots
                     Name = (string)stepContext.Values["model"],
                 };
 
-
                 var imageBytes = (List<(byte[], string)>)stepContext.Values["vehicleImages"];
 
                 await _inventoryService.AddVehicle(carModel, imageBytes, cancellationToken: cancellationToken);
                 await stepContext.SendTypingAsync(_settings.CorrectAnwer, 1000, cancellationToken);
 
-
-
-                // User said "no" so we will skip the next step. Give -1 as the age.
                 return await stepContext.NextAsync(string.Empty, cancellationToken);
             }
+        }
+
+        private async Task<List<CarModel>> GetVehicles(CancellationToken cancellationToken)
+        {
+            var vehicles = await _inventoryService.GetVehicles(cancellationToken);
+
+            return vehicles;
         }
 
         private async Task<DialogTurnResult> ConfirmStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
@@ -219,49 +222,44 @@ namespace BertaBot.Bots
             if (string.IsNullOrEmpty(correctVehicleName))//the prediction was correct
             {
                 _logger.LogInformation($"the prediction was correct, there is no need to call the api");
-                //await stepContext.SendTypingAsync(MessageFactory.Text("Nice, saving it now."), 1000, cancellationToken);
+
+                //await stepContext.SendTypingAsync(MessageFactory.ContentUrl("https://pbs.twimg.com/profile_images/649600410525679616/QjoMCmpB_400x400.png", "image/png"), 1200, cancellationToken);
+                await stepContext.SendTypingAsync(MessageFactory.Text("Thanks for using Dealertrack"), 1000, cancellationToken);
+
+                return await stepContext.EndDialogAsync(cancellationToken: cancellationToken);
             }
             else
             {
+                stepContext.Values["brand"] = correctVehicleName;
                 _logger.LogInformation($"wrong prediction, save it to JOAO api");
-                await stepContext.SendTypingAsync(MessageFactory.Text("Nice, saving it now."), 1000, cancellationToken);
-                //send to joao
 
+                var promptOptions = new PromptOptions
+                {
+                    Prompt = MessageFactory.Text(_settings.CorrectModel),
+                };
 
+                _logger.LogInformation(LoggingEvents.CheckCarPredictionAsync, $"wrong prediction, ask for model");
+                return await stepContext.PromptTypingAsync(nameof(TextPrompt), promptOptions, 1000, cancellationToken);
             }
-
-            _logger.LogInformation($"end of game");
-            await stepContext.SendTypingAsync(MessageFactory.ContentUrl("https://pbs.twimg.com/profile_images/649600410525679616/QjoMCmpB_400x400.png", "image/png"), 1200, cancellationToken);
-            await stepContext.SendTypingAsync(MessageFactory.Text("Thanks for using Cox Autoinc"), 1000, cancellationToken);
-
-            return await stepContext.EndDialogAsync(cancellationToken: cancellationToken);
         }
 
         private async Task<DialogTurnResult> SummaryStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            if ((bool)stepContext.Result)
+            string correctModel = (string)stepContext.Result;
+            stepContext.Values["model"] = correctModel;
+
+            await stepContext.SendTypingAsync(MessageFactory.Text("Nice, saving it now."), 1000, cancellationToken);
+            var carModel = new CarModel
             {
-                // Get the current profile object from user state.
-                var userProfile = await _userProfileAccessor.GetAsync(stepContext.Context, () => new UserProfile(), cancellationToken);
+                Brand = (string)stepContext.Values["brand"],
+                Name = (string)stepContext.Values["model"],
+            };
 
-                userProfile.Transport = (string)stepContext.Values["transport"];
-                userProfile.Name = (string)stepContext.Values["name"];
-                userProfile.Age = (int)stepContext.Values["age"];
+            var imageBytes = (List<(byte[], string)>)stepContext.Values["vehicleImages"];
 
-                var msg = $"I have your mode of transport as {userProfile.Transport} and your name as {userProfile.Name}.";
-                if (userProfile.Age != -1)
-                {
-                    msg += $" And age as {userProfile.Age}.";
-                }
+            await _inventoryService.AddVehicle(carModel, imageBytes, cancellationToken: cancellationToken);
+            await stepContext.SendTypingAsync(MessageFactory.Text("Thanks for using Dealertrack"), 1000, cancellationToken);
 
-                await stepContext.Context.SendActivityAsync(MessageFactory.Text(msg), cancellationToken);
-            }
-            else
-            {
-                await stepContext.Context.SendActivityAsync(MessageFactory.Text("Thanks. Your profile will not be kept."), cancellationToken);
-            }
-
-            // WaterfallStep always finishes with the end of the Waterfall or with another dialog, here it is the end.
             return await stepContext.EndDialogAsync(cancellationToken: cancellationToken);
         }
 
@@ -286,8 +284,6 @@ namespace BertaBot.Bots
                 imagesBytes.Add((image, attchaments[i].ContentType));
             }
 
-            await stepContext.SendTypingAsync(_settings.ProcessingFinished, 1000, cancellationToken: cancellationToken);
-            await stepContext.SendTypingAsync(_settings.Complain, 1000, cancellationToken: cancellationToken);
             stepContext.Values["vehicleImages"] = imagesBytes;
             return predictions;
         }
@@ -300,8 +296,6 @@ namespace BertaBot.Bots
                 var image = await _localService.GetImageAsync(attachment, stepContext.Context.Activity, isSkype);
 
                 var result = await _cogServices.MakePredictionAsync(image);
-
-                await stepContext.SendTypingAsync(_settings.Processing.Replace("#NUMBER", (index).ToString()), 1500, cancellationToken: cancellationToken);
 
                 return (result.predictions, image);
             }

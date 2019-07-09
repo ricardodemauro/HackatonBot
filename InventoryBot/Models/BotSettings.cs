@@ -26,5 +26,6 @@ namespace BertaBot.Models
         public string CheckAnswer { get; set; }
         public string CorrectAnwer { get; set; }
         public string WrongAnswer { get; set; }
+        public string CorrectModel { get; set; }
     }
 }
