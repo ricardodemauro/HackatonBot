@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+using System;
 using BertaBot.Bots;
 using BertaBot.CustomVision;
 using BertaBot.Infrastructure;
@@ -13,13 +14,25 @@ using Microsoft.Bot.Builder.Integration.AspNet.Core;
 using Microsoft.BotBuilderSamples;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace BertaBot
 {
     public class Startup
     {
+        private readonly IConfiguration _configuration;
+        private IHostingEnvironment _hostingEnvironment;
+        private ILogger<Startup> _logger;
+
+        public Startup(IConfiguration configuration, IHostingEnvironment hostingEnvironment, ILogger<Startup> logger)
+        {
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _hostingEnvironment = hostingEnvironment ?? throw new ArgumentNullException(nameof(hostingEnvironment));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
         // This method gets called by the runtime. Use this method to add services to the container.
-        public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
+        public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
 
@@ -48,7 +61,7 @@ namespace BertaBot
             // .NET Core specific: Inject configurations to the static configuration provider.
             //SettingsUtils.AttachConfiguration(configuration);
 
-            services.AddSingleton<IConfiguration>(x => configuration);
+            services.AddSingleton<IConfiguration>(x => _configuration);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
