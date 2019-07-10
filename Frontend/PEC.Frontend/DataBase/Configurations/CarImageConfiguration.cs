@@ -13,7 +13,6 @@ namespace PEC.Frontend.DataBase.Configurations
         public void Configure(EntityTypeBuilder<CarImage> builder)
         {
             builder.ToTable("CarImages").HasKey(x => x.Id);
-            builder.Property(x => x.Base64).HasColumnType("BLOB");
         }
     }
 }

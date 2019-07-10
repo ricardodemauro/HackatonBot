@@ -1,7 +1,7 @@
 ﻿"use strict";
 
 var connection = new signalR.HubConnectionBuilder().withUrl("/carHub").build();
-var cardHtml = "<div id=\"card_number$CAR_ID\" class=\"col-sm-2 col-md-3 col-lg-4 mt-2 mr-3\" style=\"display:none;\">" +
+var cardHtml = "<div id=\"card_number$CAR_ID\" class=\"col-md-4 mt-2 col-sm-6\" style=\"display:none;\">" +
     "<div class=\"card\" style = \"width: 18rem;\" >" +
     "<img class=\"card-img-top\" src=\"$CAR_IMAGE\" alt=\"Card image cap\">" +
     "<div class=\"card-body\">" +
@@ -20,9 +20,10 @@ connection.on("AddNewVehicle", function (vehicle) {
     replacedCard = replacedCard.replace("$CAR_NAME", vehicle.name);
     replacedCard = replacedCard.replace("$CAR_BRAND", vehicle.brand);
 
-    if (vehicle.Base64Images !== undefined) {
-        console.log(vehicle.Base64Images[0]);
-        replacedCard = replacedCard.replace("$CAR_IMAGE", vehicle.Base64Images[0].base64);
+    console.log(vehicle.carImages);
+    if (vehicle.carImages.length > 0) {
+        console.log(vehicle.carImages[0]);
+        replacedCard = replacedCard.replace("$CAR_IMAGE", vehicle.carImages[0].base64);
     } else {
         replacedCard = replacedCard.replace("$CAR_IMAGE", "/car-placeholder-image.jpg");
     }
