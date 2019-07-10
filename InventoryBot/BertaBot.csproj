@@ -6,7 +6,12 @@
     <UserSecretsId>1073c4c3-f25a-4677-b796-ba5005361810</UserSecretsId>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <WarningLevel>0</WarningLevel>
+  </PropertyGroup>
+
   <ItemGroup>
+    <PackageReference Include="CXuesong.Ported.Microsoft.Bot.Builder.Calling" Version="3.13.0.3" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.7.1" />
     <PackageReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.Bot.Builder.Dialogs" Version="4.4.5" />
